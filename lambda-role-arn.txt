@@ -1,0 +1,2 @@
+arn:aws:iam::283224255391:role/lambda-image-processing-role
+

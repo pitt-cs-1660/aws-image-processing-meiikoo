@@ -1,4 +1,5 @@
 import json
+from urllib.parse import unquote_plus
 from PIL import Image
 import io
 import boto3
@@ -41,16 +42,25 @@ def resize_handler(event, context):
             for s3_event in sns_message.get('Records', []):
                 try:
                     s3_record = s3_event['s3']
+                    # Step 1: parse the SNS/S3 event to identify the object to process
                     bucket_name = s3_record['bucket']['name']
-                    object_key = s3_record['object']['key']
+                    object_key = unquote_plus(s3_record['object']['key'])
 
                     print(f"Processing: s3://{bucket_name}/{object_key}")
 
-                    ######
-                    #
-                    #  TODO: add resize lambda code here
-                    #
-                    ######
+                    # Step 2: download the source image from S3
+                    image = download_from_s3(bucket_name, object_key)
+                    print(f"Downloaded image: {image.size}")
+
+                    # Step 3: apply the resize transformation
+                    resized_image = image.resize((512, 512), Image.Resampling.LANCZOS)
+                    print(f"Resized to: {resized_image.size}")
+
+                    # Step 4: upload the processed image to the /processed/ prefix
+                    filename = Path(object_key).name
+                    output_key = f"processed/resize/{filename}"
+                    upload_to_s3(bucket_name, output_key, resized_image)
+                    print(f"Uploaded to: {output_key}")
 
                     processed_count += 1
 

@@ -1,4 +1,5 @@
 import json
+from urllib.parse import unquote_plus
 from PIL import Image
 import io
 import boto3
@@ -41,16 +42,39 @@ def exif_handler(event, context):
             for s3_event in sns_message.get('Records', []):
                 try:
                     s3_record = s3_event['s3']
+                    # Step 1: parse the SNS/S3 event to identify the object to process
                     bucket_name = s3_record['bucket']['name']
-                    object_key = s3_record['object']['key']
+                    object_key = unquote_plus(s3_record['object']['key'])
 
                     print(f"Processing: s3://{bucket_name}/{object_key}")
 
-                    ######
-                    #
-                    #  TODO: add exif lambda code here
-                    #
-                    ######
+                    # Step 2: download the source image from S3
+                    image = download_from_s3(bucket_name, object_key)
+
+                    # Step 3: extract EXIF and other metadata
+                    exif_data = {
+                        'width': image.width,
+                        'height': image.height,
+                        'format': image.format,
+                        'mode': image.mode,
+                    }
+
+                    if hasattr(image, "getexif"):
+                        exif = image.getexif()
+                        if exif:
+                            for tag_id, value in exif.items():
+                                try:
+                                    exif_data[str(tag_id)] = str(value)
+                                except Exception as ex:
+                                    print(f"Failed to serialize EXIF tag {tag_id}: {ex}")
+
+                    print(f"Extracted EXIF data: {json.dumps(exif_data, indent=2)}")
+
+                    # Step 4: upload the metadata JSON to the /processed/ prefix
+                    filename = Path(object_key).stem
+                    output_key = f"processed/exif/{filename}.json"
+                    upload_to_s3(bucket_name, output_key, json.dumps(exif_data, indent=2), 'application/json')
+                    print(f"Uploaded to: {output_key}")
 
                     processed_count += 1
 

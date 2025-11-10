@@ -1,0 +1,4 @@
+resize-lambda: 283224255391.dkr.ecr.us-east-1.amazonaws.com/resize-lambda
+greyscale-lambda: 283224255391.dkr.ecr.us-east-1.amazonaws.com/greyscale-lambda
+exif-lambda: 283224255391.dkr.ecr.us-east-1.amazonaws.com/exif-lambda
+
